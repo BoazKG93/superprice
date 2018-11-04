@@ -25,7 +25,7 @@ SECRET_KEY = '6@z&msh(%*v%-8qp&vnjj%=_%bjw-82d&iu$hdg9ix!dsd3m1@'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["d8ee3ff2.ngrok.io", "127.0.0.1"]
 
 
 # Application definition
@@ -124,3 +124,5 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880

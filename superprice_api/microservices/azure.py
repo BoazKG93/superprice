@@ -1,7 +1,7 @@
 import requests
 import os
 
-subscription_key = os.environ.get('VISION_API_KEY')
+subscription_key = "4d7bd9b670a041b7b410cbeea72083ca" #os.environ.get('VISION_API_KEY')
 assert subscription_key
 
 

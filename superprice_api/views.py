@@ -8,6 +8,19 @@ from .serializers import FruitsSerializer, ImagesSerializers
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from .microservices.azure import analyze_image
+import base64
+from django.core.files.base import ContentFile
+import os
+from django.conf import settings
+from .microservices.arduino import  sendText
+from .price import PriceCalculator
+
+
+def decode_image(data):
+    format, imgstr = data.split(';base64,')
+    ext = format.split('/')[-1]
+    data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)  # You can save this as file instance.
+    return data
 
 
 class IndexView(TemplateView):
@@ -20,14 +33,6 @@ class IndexView(TemplateView):
         return context
 
 
-class DocumentForm(forms.ModelForm):
-    class Meta:
-        model = Images
-        fields = ('image',)
-
-class ImageUploadForm(forms.Form):
-    """Image upload form."""
-    image = forms.ImageField()
 
 class FruitsView(viewsets.ModelViewSet):
     """
@@ -43,32 +48,41 @@ class ImagesView(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], name='Upload an image')
     def upload(self, request, *args, **kwargs):
-        form = DocumentForm(request.POST, request.FILES)
-        if form.is_valid():
-            image = form.save()
-            self.analyze(image)
-            return HttpResponse('Did not find a fruit')
-        return HttpResponseForbidden('Form is not valid')
+        imageObj = Images(image=decode_image(request.POST["img"]))
+        imageObj.save()
+        self.analyze(imageObj.image)
+        return HttpResponse('Succeeded')
 
     @action(detail=False, methods=['post'], name='Analyize an image')
     def analyze(self, image):
-        analysis = analyze_image(image.image.path)
+        analysis = analyze_image(image.path)
         fruit = None
-        for value in analysis["tags"]:
-            if (value["name"] == "apple" and value["confidence"] > 0.4):
+        list = analysis["description"]["tags"]
+        print(list)
+        for value in list:
+            if (value == "apple"):
                 fruit = Fruits.objects.get(title="apple")
+                if 'red' in list: #This is very bad!
+                    fruit.price /= 2
                 break
-            elif (value["name"] == "banana" and value["confidence"] > 0.4):
+            elif (value == "banana"):
                 fruit = Fruits.objects.get(title="banana")
                 break
-            else:
-                #Do face analysis
-                return
 
-        #Call calculations on fruit and load template
 
-        #Update Arduino
+        if(fruit == None):
+            print("Nothing")
+            return
 
+        #TODO: Call calculations on fruit and load template
+
+        pricer = PriceCalculator(fruit)
+        pricer.calculate_discount()
+        pricer.calculate_price()
+
+        #TODO: Update Arduino
+        priceString = fruit.title+" ${0:.2f}".format(pricer.price)
+        sendText(priceString)
 
 
 
